@@ -100,6 +100,7 @@
 		equal(options.selectedBackColor, '#428bca', 'selectedBackColor defaults ok');
 		equal(options.enableLinks, false, 'enableLinks defaults ok');
 		equal(options.highlightSelected, true, 'highlightSelected defaults ok');
+		equal(options.alwaysSelected, false, 'alwaysSelected default ok');
 		equal(options.showBorder, true, 'showBorder defaults ok');
 		equal(options.showTags, false, 'showTags defatuls ok');
 		equal(options.onNodeSelected, null, 'onNodeSelected default ok');
@@ -119,6 +120,7 @@
 			selectedBackColor: 'darkorange',
 			enableLinks: true,
 			highlightSelected: false,
+			alwaysSelected: true,
 			showBorder: false,
 			showTags: true,
 			onNodeSelected: function () {}
@@ -139,6 +141,7 @@
 		equal(options.selectedBackColor, 'darkorange', 'selectedBackColor set ok');
 		equal(options.enableLinks, true, 'enableLinks set ok');
 		equal(options.highlightSelected, false, 'highlightSelected set ok');
+		equal(options.alwaysSelected, true, 'alwaysSelected set ok');
 		equal(options.showBorder, false, 'showBorder set ok');
 		equal(options.showTags, true, 'showTags set ok');
 		equal(typeof options.onNodeSelected, 'function', 'onNodeSelected set ok');
@@ -247,6 +250,56 @@
 		ok((el.attr('class').split(' ').indexOf('node-selected') === -1), 'Node is correctly unselected : class "node-selected" removed');
 		ok(($('.node-selected').length === 0), 'There are no selected nodes');
 		ok(!cbWorked, 'onNodeSelected was not called');
+		ok(!onWorked, 'nodeSelected was not fired');
+	});
+
+	test('Unselecting a node prevented when alwaysSelected flag turned on', function () {
+
+		var cbWorked, onWorked = false;
+		init({
+			data: data,
+			alwaysSelected: true,
+			onNodeSelected: function(/*event, date*/) {
+				cbWorked = true;
+			}
+		})
+		.on('nodeSelected', function(/*event, date*/) {
+			onWorked = true;
+		});
+
+		// First select a node
+		var el = $('.list-group-item:first');
+		el.trigger('click');
+
+		// Then test unselect by simulating another click
+		cbWorked = onWorked = false;
+		el = $('.list-group-item:first');
+		el.trigger('click');
+		el = $('.list-group-item:first');
+		ok((el.attr('class').split(' ').indexOf('node-selected') !== -1), 'Node correctly stays selected : class "node-selected" kept');
+		ok(($('.node-selected').length === 1), 'There is only one selected node');
+		ok(!cbWorked, 'onNodeSelected was not called');
+		ok(!onWorked, 'nodeSelected was not fired');
+	});
+
+	test('A first node is selected on init when alwaysSelected flag turned on', function () {
+
+		var cbWorked, onWorked = false;
+		init({
+			data: data,
+			alwaysSelected: true,
+			onNodeSelected: function(/*event, date*/) {
+				cbWorked = true;
+			}
+		})
+		.on('nodeSelected', function(/*event, date*/) {
+			onWorked = true;
+		});
+
+		var el = $('.list-group-item:first');
+		ok((el.attr('class').split(' ').indexOf('node-selected') !== -1), 'Node is correctly selected : class "node-selected" added');
+		ok(($('.node-selected').length === 1), 'There is only one selected node');
+		ok(cbWorked, 'onNodeSelected function was called');
 		ok(!onWorked, 'nodeSelected was not fired');
 	});
 

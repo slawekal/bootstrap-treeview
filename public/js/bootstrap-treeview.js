@@ -59,6 +59,7 @@
 
 		enableLinks: false,
 		highlightSelected: true,
+		alwaysSelected: false,
 		showBorder: true,
 		showTags: false,
 
@@ -106,6 +107,8 @@
 			this._destroy();
 			this._subscribeEvents();
 			this._render();
+			
+			this._selectFirstNode();
 		},
 
 		_unsubscribeEvents: function() {
@@ -164,6 +167,15 @@
 			}
 			return node;
 		},
+		
+		_selectFirstNode: function() {
+			if (this.options.alwaysSelected && this.nodes && this.nodes.length) {
+				var node = this.nodes[0];
+				if (this._isSelectable(node)) {
+					this._setSelectedNode(node);
+				}
+			}
+		},
 
 		// Actually triggers the nodeSelected event
 		_triggerNodeSelectedEvent: function(node) {
@@ -178,13 +190,15 @@
 			if (!node) { return; }
 			
 			if (node === this.selectedNode) {
-				this.selectedNode = {};
+				if (!this.options.alwaysSelected) {
+					this.selectedNode = {};
+					this._render();
+				}
 			}
 			else {
 				this._triggerNodeSelectedEvent(this.selectedNode = node);
+				this._render();
 			}
-			
-			this._render();
 		},
 
 		// On initialization recurses the entire tree structure 
