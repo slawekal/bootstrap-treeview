@@ -7,6 +7,10 @@
 	function init(options) {
 		return $('#treeview').treeview(options);
 	}
+	
+	function api(method, args) {
+		return $('#treeview').treeview(method, args);
+	}
 
 	function getOptions(el) {
 		return el.data('plugin_treeview').options;
@@ -301,6 +305,47 @@
 		ok(($('.node-selected').length === 1), 'There is only one selected node');
 		ok(cbWorked, 'onNodeSelected function was called');
 		ok(!onWorked, 'nodeSelected was not fired');
+	});
+
+	test('A selected node loses and gains a highlight when using toogleHighlightSelected', function () {
+
+		var cbWorked, onWorked = false;
+		var tree = init({
+			data: data,
+			alwaysSelected: true
+		});
+		var options = getOptions(tree);
+
+		var el = null;
+		var nodeIsSelected = function() {
+			el = $('.list-group-item:first');
+			ok((el.attr('class').split(' ').indexOf('node-selected') !== -1), 'Node is correctly selected : class "node-selected" added');
+		};
+		var nodeIsHightlighted = function() {
+			ok((el.css('background-color') !== "" && el.css('background-color') !== "rgba(0, 0, 0, 0)"), 'Node is correctly highlighted');
+		};
+		var nodeIsNotHightlighted = function() {
+			ok((el.css('background-color') === "" || el.css('background-color') === "rgba(0, 0, 0, 0)"), 'Node is correctly not highlighted');
+		};
+		
+		nodeIsSelected();
+		nodeIsHightlighted();
+		
+		api("toogleHighlightSelected");
+		nodeIsSelected();
+		nodeIsNotHightlighted();
+		
+		api("toogleHighlightSelected");
+		nodeIsSelected();
+		nodeIsHightlighted();
+		
+		api("toogleHighlightSelected", true);
+		nodeIsSelected();
+		nodeIsHightlighted();
+		
+		api("toogleHighlightSelected", false);
+		nodeIsSelected();
+		nodeIsNotHightlighted();
 	});
 
 	test('Clicking a non-selectable, colllapsed node expands the node', function () {

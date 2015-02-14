@@ -110,6 +110,16 @@
 			
 			this._selectFirstNode();
 		},
+		
+		toogleHighlightSelected: function(highlightSelected) {
+			if (typeof(highlightSelected) !== "boolean") {
+				highlightSelected = !this.options.highlightSelected;
+			}
+			if (this.options.highlightSelected !== highlightSelected) {
+				this.options.highlightSelected = highlightSelected;
+				this._render();
+			}
+		},
 
 		_unsubscribeEvents: function() {
 
@@ -449,7 +459,7 @@
 					logError('No such method : ' + options);
 				}
 				else {
-					if (typeof args === 'string') {
+					if (typeof args === 'string' || typeof args === 'boolean' || typeof args === 'number') {
 						args = [args];
 					}
 					self[options].apply(self, args);
