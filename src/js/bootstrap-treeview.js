@@ -105,6 +105,8 @@
 			
 			this._checkElementIdIsSet();
 
+			this.nodes = [];
+			this._flatTree(this.tree);
 			this._setInitialLevels(this.tree, 0);
 
 			this._destroy();
@@ -179,7 +181,7 @@
 		_findNode: function(target) {
 
 			var nodeId = target.closest('li.list-group-item').attr('data-nodeid'),
-				node = this.nodes[nodeId];
+				node = this._findNodeByNodeId(nodeId);
 
 			if (!node) {
 				console.log('Error: node does not exist');
@@ -187,12 +189,47 @@
 			return node;
 		},
 		
+		_findNodeByNodeId: function(nodeId) {
+			var node = null;
+			if (this.nodes) {
+				for (var i = 0; i < this.nodes.length; ++i) {
+					if (this.nodes[i].nodeId == nodeId) {
+						node = this.nodes[i];
+						break;
+					}
+				}
+			}
+			return node;
+		},
+		
+		_rootStateKey: function() {
+			return 'treeview/' + this._elementId + '/';
+		},
+		
 		_selectedNodeStateKey: function() {
-			return 'treeview/' + this._elementId + '/selectedNode';
+			return this._rootStateKey() + 'selectedNode';
+		},
+		
+		_nodeExpandedStateKey: function(nodeId) {
+			return this._rootStateKey() + nodeId + '/isExpanded';
 		},
 		
 		_storage: function() {
 			return sessionStorage;
+		},
+		
+		_getNodeExpandedState: function(node) {
+			if (this.options.saveState && (node.nodes || node._nodes)) {
+				var isEnabled = this._storage().getItem(this._nodeExpandedStateKey(node.nodeId));
+				return isEnabled ? isEnabled === 'true' : null;
+			}
+			return null;
+		},
+		
+		_setNodeExpandedState: function(node, expanded) {
+			if (this.options.saveState && (node.nodes || node._nodes)) {
+				this._storage().setItem(this._nodeExpandedStateKey(node.nodeId), expanded);
+			}
 		},
 		
 		_selectPreviousOrFirstNode: function() {
@@ -200,12 +237,7 @@
 				var node = null;
 				if (this.options.saveState) {
 					var nodeId = parseInt(this._storage().getItem(this._selectedNodeStateKey()));
-					for (var i = 0; i < this.nodes.length; ++i) {
-						if (this.nodes[i].nodeId == nodeId) {
-							node = this.nodes[i];
-							break;
-						}
-					}
+					node = this._findNodeByNodeId(nodeId);
 				}
 				if (node == null && this.options.alwaysSelected) {
 					node = this.nodes[0];
@@ -258,8 +290,15 @@
 			var self = this;
 			$.each(nodes, function addNodes(id, node) {
 				
-				if (level >= self.options.levels) {
+				var wasExpandedPreviously = self._getNodeExpandedState(node);
+				var isOnExpandedLevel = level < self.options.levels;
+				var shouldBeCollapsed = wasExpandedPreviously === false || (wasExpandedPreviously == null && !isOnExpandedLevel);
+				
+				if (shouldBeCollapsed) {
 					self._toggleNodes(node);
+				}
+				else {
+					self._setNodeExpandedState(node, true);
 				}
 
 				// Need to traverse both nodes and _nodes to ensure 
@@ -280,10 +319,12 @@
 			}
 
 			if (node.nodes) {
+				this._setNodeExpandedState(node, false);
 				node._nodes = node.nodes;
 				delete node.nodes;
 			}
 			else {
+				this._setNodeExpandedState(node, true);
 				node.nodes = node._nodes;
 				delete node._nodes;
 			}
@@ -311,9 +352,23 @@
 
 			self.$element.empty().append(self.$wrapper.empty());
 
-			// Build tree
-			self.nodes = [];
 			self._buildTree(self.tree, 0);
+		},
+
+		_flatTree: function(nodes) {
+
+			if (!nodes) { return; }
+			
+			var self = this;
+			$.each(nodes, function (id, node) {
+
+				if (!node.nodeId) {
+					node.nodeId = self.nodes.length;
+				}
+				self.nodes.push(node);
+				
+				return self._flatTree(node.nodes);
+			});
 		},
 
 		// Starting from the root node, and recursing down the 
@@ -325,9 +380,6 @@
 
 			var self = this;
 			$.each(nodes, function addNodes(id, node) {
-
-				node.nodeId = self.nodes.length;
-				self.nodes.push(node);
 
 				var treeItem = $(self._template.item)
 					.addClass('node-' + self._elementId)
