@@ -62,6 +62,7 @@
 		alwaysSelected: false,
 		showBorder: true,
 		showTags: false,
+		stateSave: false,
 
 		// Event handler for when a node is selected
 		onNodeSelected: undefined
@@ -101,6 +102,8 @@
 			}
 
 			this.options = $.extend({}, Tree.defaults, options);
+			
+			this._checkElementIdIsSet();
 
 			this._setInitialLevels(this.tree, 0);
 
@@ -108,11 +111,17 @@
 			this._subscribeEvents();
 			this._render();
 			
-			this._selectFirstNode();
+			this._selectPreviousOrFirstNode();
 		},
 		
-		toogleHighlightSelected: function(highlightSelected) {
-			if (typeof(highlightSelected) !== "boolean") {
+		_checkElementIdIsSet: function() {
+			if (!this._elementId) {
+				throw 'Id of a target element is required';
+			}
+		},
+		
+		toggleHighlightSelected: function(highlightSelected) {
+			if (typeof(highlightSelected) !== 'boolean') {
 				highlightSelected = !this.options.highlightSelected;
 			}
 			if (this.options.highlightSelected !== highlightSelected) {
@@ -178,11 +187,34 @@
 			return node;
 		},
 		
-		_selectFirstNode: function() {
-			if (this.options.alwaysSelected && this.nodes && this.nodes.length) {
-				var node = this.nodes[0];
-				if (this._isSelectable(node)) {
-					this._setSelectedNode(node);
+		_selectedNodeStateKey: function() {
+			return 'treeview/' + this._elementId + '/selectedNode';
+		},
+		
+		_storage: function() {
+			return sessionStorage;
+		},
+		
+		_selectPreviousOrFirstNode: function() {
+			if (this.nodes && this.nodes.length) {
+				var node = null;
+				if (this.options.saveState) {
+					console.log('Retrieving from', this._selectedNodeStateKey());
+					var nodeId = parseInt(this._storage().getItem(this._selectedNodeStateKey()));
+					for (var i = 0; i < this.nodes.length; ++i) {
+						if (this.nodes[i].nodeId == nodeId) {
+							node = this.nodes[i];
+							break;
+						}
+					}
+				}
+				if (node == null && this.options.alwaysSelected) {
+					node = this.nodes[0];
+				}
+				if (node != null) {
+					if (this._isSelectable(node)) {
+						this._setSelectedNode(node);
+					}
 				}
 			}
 		},
@@ -202,11 +234,19 @@
 			if (node === this.selectedNode) {
 				if (!this.options.alwaysSelected) {
 					this.selectedNode = {};
+					if (this.options.saveState) {
+						console.log('Clearing', this._selectedNodeStateKey());
+						this._storage().removeItem(this._selectedNodeStateKey());
+					}
 					this._render();
 				}
 			}
 			else {
 				this._triggerNodeSelectedEvent(this.selectedNode = node);
+				if (this.options.saveState) {
+					console.log('Setting', node.nodeId, 'to', this._selectedNodeStateKey());
+					this._storage().setItem(this._selectedNodeStateKey(), node.nodeId);
+				}
 				this._render();
 			}
 		},

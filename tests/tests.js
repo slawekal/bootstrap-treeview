@@ -4,8 +4,11 @@
 
 	'use strict';
 
-	function init(options) {
-		return $('#treeview').treeview(options);
+	function init(options, elementSelector) {
+		if (!elementSelector) {
+			elementSelector = '#treeview';
+		}
+		return $(elementSelector).treeview(options);
 	}
 	
 	function api(method, args) {
@@ -15,6 +18,10 @@
 	function getOptions(el) {
 		return el.data('plugin_treeview').options;
 	}
+	
+	QUnit.testDone(function(details) {
+		sessionStorage.clear();
+	});
 
 	var data = [
 		{
@@ -107,6 +114,7 @@
 		equal(options.alwaysSelected, false, 'alwaysSelected default ok');
 		equal(options.showBorder, true, 'showBorder defaults ok');
 		equal(options.showTags, false, 'showTags defatuls ok');
+		equal(options.stateSave, false, 'stateSave defaults ok');
 		equal(options.onNodeSelected, null, 'onNodeSelected default ok');
 
 		// Then test user options are correctly set
@@ -127,6 +135,7 @@
 			alwaysSelected: true,
 			showBorder: false,
 			showTags: true,
+			stateSave: true,
 			onNodeSelected: function () {}
 		};
 
@@ -148,6 +157,7 @@
 		equal(options.alwaysSelected, true, 'alwaysSelected set ok');
 		equal(options.showBorder, false, 'showBorder set ok');
 		equal(options.showTags, true, 'showTags set ok');
+		equal(options.stateSave, true, 'stateSave set ok');
 		equal(typeof options.onNodeSelected, 'function', 'onNodeSelected set ok');
 	});
 
@@ -307,7 +317,7 @@
 		ok(!onWorked, 'nodeSelected was not fired');
 	});
 
-	test('A selected node loses and gains a highlight when using toogleHighlightSelected', function () {
+	test('A selected node loses and gains a highlight when using toggleHighlightSelected', function () {
 
 		var cbWorked, onWorked = false;
 		var tree = init({
@@ -331,21 +341,146 @@
 		nodeIsSelected();
 		nodeIsHightlighted();
 		
-		api("toogleHighlightSelected");
+		api("toggleHighlightSelected");
 		nodeIsSelected();
 		nodeIsNotHightlighted();
 		
-		api("toogleHighlightSelected");
+		api("toggleHighlightSelected");
 		nodeIsSelected();
 		nodeIsHightlighted();
 		
-		api("toogleHighlightSelected", true);
+		api("toggleHighlightSelected", true);
 		nodeIsSelected();
 		nodeIsHightlighted();
 		
-		api("toogleHighlightSelected", false);
+		api("toggleHighlightSelected", false);
 		nodeIsSelected();
 		nodeIsNotHightlighted();
+	});
+	
+	test('When using state, a previously selected node is restored', function () {
+		
+		var clickNode = function() {
+			var el = $('.list-group-item:first');
+			el.trigger('click');
+		};
+		
+		var nodeIsSelected = function() {
+			var el = $('.list-group-item:first');
+			ok((el.attr('class').split(' ').indexOf('node-selected') !== -1), 'Node is correctly selected');
+		};
+		
+		var nodeIsNotSelected = function() {
+			var el = $('.list-group-item:first');
+			ok((el.attr('class').split(' ').indexOf('node-selected') === -1), 'Node is correctly not selected');
+		};
+		
+		init({
+			data: data
+		});
+		nodeIsNotSelected();
+		clickNode();
+		nodeIsSelected();
+		
+		init({
+			data: data,
+			saveState: true
+		});
+		nodeIsNotSelected();
+		clickNode();
+		nodeIsSelected();
+		
+		init({
+			data: data,
+			saveState: true
+		});
+		nodeIsSelected();
+		
+		init({
+			data: data
+		});
+		nodeIsNotSelected();
+	});
+	
+	test('When using state, an unselected node is not restored', function () {
+		
+		var clickNode = function() {
+			var el = $('.list-group-item:first');
+			el.trigger('click');
+		};
+		
+		var nodeIsSelected = function() {
+			var el = $('.list-group-item:first');
+			ok((el.attr('class').split(' ').indexOf('node-selected') !== -1), 'Node is correctly selected');
+		};
+		
+		var nodeIsNotSelected = function() {
+			var el = $('.list-group-item:first');
+			ok((el.attr('class').split(' ').indexOf('node-selected') === -1), 'Node is correctly not selected');
+		};
+		
+		init({
+			data: data,
+			saveState: true
+		});
+		nodeIsNotSelected();
+		clickNode();
+		nodeIsSelected();
+		clickNode();
+		nodeIsNotSelected();
+		
+		init({
+			data: data,
+			saveState: true
+		});
+		nodeIsNotSelected();
+	});
+	
+	test('When using state, state is separate per element', function () {
+		
+		var clickNode = function() {
+			var el = $('.list-group-item:first');
+			el.trigger('click');
+		};
+		
+		var nodeIsSelected = function() {
+			var el = $('.list-group-item:first');
+			ok((el.attr('class').split(' ').indexOf('node-selected') !== -1), 'Node is correctly selected');
+		};
+		
+		var nodeIsNotSelected = function(treeViewSelector) {
+			var el = $(treeViewSelector).find('.list-group-item:first');
+			ok((el.attr('class').split(' ').indexOf('node-selected') === -1), 'Node is correctly not selected');
+		};
+		
+		init({
+			data: data,
+			saveState: true
+		});
+		nodeIsNotSelected('#treeview');
+		clickNode();
+		nodeIsSelected();
+		
+		init({
+			data: data,
+			saveState: true
+		}, '#treeview2');
+		nodeIsNotSelected('#treeview2');
+	});
+	
+	test('Id of the element is required', function () {
+		
+		var exceptionMessage = null;
+		try {
+			init({
+				data: data
+			}, '.treeviewClass');
+		}
+		catch(ex) {
+			exceptionMessage = ex;
+		}
+		
+		equal(exceptionMessage, "Id of a target element is required", "Expected exception has not been thrown.");
 	});
 
 	test('Clicking a non-selectable, colllapsed node expands the node', function () {
